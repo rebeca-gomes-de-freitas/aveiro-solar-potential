@@ -123,6 +123,3 @@ Group project, Seminar 2025/2026, MSc in Data Science, University of Aveiro.
 All members contributed jointly to the analysis, code and dashboard.
 Original group repository: https://github.com/gabrielaneves21404-rgb/Seminario
 
-## Licence
-
-Code is released under the MIT licence (see `LICENSE`). Data remain subject to the terms of their original sources.
