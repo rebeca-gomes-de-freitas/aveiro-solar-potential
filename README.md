@@ -10,7 +10,7 @@ Python · GeoPandas · PySAL (spreg, esda) · PuLP (MILP) · Streamlit
 
 ## Overview
 
-The project estimates the technical and economic viability of Renewable Energy Communities in the municipality of Aveiro. The analysis works at two spatial levels: the 7-digit postal code (CP7) and the distribution transformer substation (PTD) service areas of the grid operator E-Redes.
+The project estimates the technical and economic viability of Renewable Energy Communities in the municipality of Aveiro, Portugal. The analysis works at two spatial levels: the 7-digit postal code (CP7) and the distribution transformer substation (PTD) service areas of the grid operator E-Redes.
 
 The pipeline runs in four stages:
 
