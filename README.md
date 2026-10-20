@@ -1,183 +1,128 @@
-# ☀️ Aveiro CER Solar — Potencial Fotovoltaico e Comunidades de Energia Renovável
+# Aveiro Solar Potential
 
-**Projeto académico | Mestrado UA | Seminário 2025/2026 — Grupo 4**
+**Geospatial and economic analysis of rooftop solar PV potential for Renewable Energy Communities (CER) in Aveiro, Portugal.**
 
-Análise geoespacial e económica do potencial de instalação solar fotovoltaica no município de Aveiro, ao nível do código postal de 7 dígitos (CP7) e dos Postos de Transformação de Distribuição (PTD) da E-Redes.
+Group project developed for the Seminar course (2025/2026), MSc in Data Science, University of Aveiro.
 
----
-
-## 📋 Resumo do Projeto
-
-O projeto estima a viabilidade técnica e económica de Comunidades de Energia Renovável (CER) em Aveiro, cobrindo quatro etapas principais:
-
-| Notebook | Tema | Output principal |
-|----------|------|-----------------|
-| `04` | Produção PV + Consumo por CP7 | `comparacao_final_limpa_cp7.csv` |
-| `01` | Roteamento espacial (edifícios → PTD) + Dimensionamento físico | `dashboard_ptd_capacidade_real.gpkg` |
-| `02` | Análise económica por PTD (VAL, TIR, Payback) | `analise_economica_ptd.csv` |
-| `03` | Econometria espacial (Moran, SAR, SEM) + Optimização MILP | `milp_resultados_cp7_88k.csv` |
-
-**Resultados chave:**
-- Produção solar potencial estimada: **292 GWh/ano**
-- Consumo total validado (zona de cruzamento): **427 GWh/ano**
-- Taxa de autossuficiência global: **52.8%**
-- Com orçamento de 5 M€ (MILP): **359 de 558 CP7s autossuficientes (64.3%)**
+Python · GeoPandas · PySAL (spreg, esda) · PuLP (MILP) · Streamlit
 
 ---
 
-## 🗂️ Estrutura do Repositório
+## Overview
+
+The project estimates the technical and economic viability of Renewable Energy Communities in the municipality of Aveiro. The analysis works at two spatial levels: the 7-digit postal code (CP7) and the distribution transformer substation (PTD) service areas of the grid operator E-Redes.
+
+The pipeline runs in four stages:
+
+| Notebook | Topic | Main output |
+|----------|-------|-------------|
+| `04` | PV production and consumption per CP7 | `comparacao_final_limpa_cp7.csv` |
+| `01` | Spatial routing (buildings to PTD) and physical sizing | `dashboard_ptd_capacidade_real.gpkg` |
+| `02` | Economic analysis per PTD (NPV, IRR, payback) | `analise_economica_ptd.csv` |
+| `03` | Spatial econometrics (Moran, SAR, SEM) and MILP optimisation | `milp_resultados_cp7_88k.csv` |
+
+Run order: **04, 01, 02, 03**.
+
+## Key results
+
+- Estimated PV production potential: **292 GWh/year**
+- Validated electricity consumption (overlap area): **427 GWh/year**
+- Overall self-sufficiency rate: **52.8%**
+- With a EUR 5M budget (MILP): **359 of 558 CP7 areas become self-sufficient (64.3%)**, funding 112 CP7 areas for EUR 4.89M
+- Global Moran's I = 0.1703 (p < 0.001): significant positive spatial autocorrelation of self-sufficiency
+- LISA: 105 significant CP7 areas (32 HH, 49 LL, 18 LH, 6 HL)
+- SAR preferred over SEM (AIC 6494.9 vs 6502.0)
+
+## Methodology in brief
+
+- **PV production:** hourly tilted-plane irradiation from PVGIS (mean 1860 kWh/m²/year). Usable roof area = building footprint x 0.40; production = irradiation x usable area x panel efficiency x performance ratio.
+- **Consumption:** robust annual extrapolation per CP7 from hourly E-Redes readings (minimum 70 hourly records).
+- **Spatial matching (buildings to PTD):** centroid-based spatial join, using a hybrid coverage rule: `within` first, with a `sjoin_nearest` fallback (up to 1000 m) for buildings left unmatched. This avoids the large data loss of a pure `within` join.
+- **Panel packing:** `floor(area x 0.85 / 2.0 m²)` panels per building.
+- **Economics:** self-consumption valued at 0.25 EUR/kWh and surplus at 0.05 EUR/kWh, 0.5%/year degradation, 25-year horizon, 7% discount rate. Indicators: NPV, IRR (numerical bisection), simple payback.
+- **Optimisation:** mixed-integer linear programme (PuLP/CBC) selecting which CP7 areas to fund under a budget constraint.
+
+Further notes are in [`docs/metodologia.md`](docs/metodologia.md) (in Portuguese).
+
+## Repository structure
 
 ```
-aveiro-cer-solar/
-│
+aveiro-solar-potential/
 ├── notebooks/
-│   ├── 01_roteamento_espacial_ptd.ipynb      # Voronoi de rede, spatial join, empacotamento
-│   ├── 02_analise_economica_ptd.ipynb         # VAL, TIR, Payback por PTD
-│   ├── 03_econometria_espacial_milp.ipynb     # Moran, SAR/SEM, MILP
-│   └── 04_producao_pv_consumo_cp7.ipynb       # PVGIS, edifícios GPKG, consumo E-Redes
-│
-├── data/
-│   ├── raw/                   # Dados de entrada (ver secção de dados)
-│   └── processed/             # Ficheiros gerados pelos notebooks
-│
-├── outputs/                   # Mapas e ficheiros finais exportados
-│
-├── docs/
-│   └── metodologia.md         # Notas metodológicas detalhadas
-│
-├── environment.yml            # Ambiente Conda reproduzível
-├── requirements.txt           # Dependências pip
-└── README.md
+│   ├── 01_roteamento_espacial_ptd.ipynb
+│   ├── 02_analise_economica_ptd.ipynb
+│   ├── 03_econometria_espacial_milp.ipynb
+│   └── 04_producao_pv_consumo_cp7.ipynb
+├── dashboard/                 # Streamlit app (see dashboard/README.md)
+├── docs/metodologia.md
+├── data/raw/                  # input data (not versioned, see below)
+├── check_env.py               # checks dependencies and input files
+├── environment.yml
+└── requirements.txt
 ```
 
----
+## Data sources
 
-## 📦 Dados de Entrada (não incluídos no repositório)
+Input data are not versioned in this repository because of file size. Place them in `data/raw/`.
 
-Os seguintes ficheiros de dados **não estão incluídos** por limitações de tamanho e privacidade. Devem ser colocados em `data/raw/`:
+| Data | Source |
+|------|--------|
+| Hourly electricity consumption per CP7 | E-Redes open data portal (public data only) |
+| Hourly solar irradiation | [PVGIS, European Commission JRC](https://re.jrc.ec.europa.eu/pvg_tools/) |
+| Building footprints | OpenStreetMap and Municipality of Aveiro |
+| PTD service areas | E-Redes data, network Voronoi built with OSMnx |
 
-| Ficheiro | Descrição | Fonte |
-|----------|-----------|-------|
-| `edificios_aveiro.gpkg` | Pegadas dos edifícios com CP7 atribuído | Cartografia OpenStreetMap / Câmara de Aveiro |
-| `pvgis_aveiro.csv` | Irradiação solar horária (série multi-anual) | [PVGIS — JRC](https://re.jrc.ec.europa.eu/pvg_tools/) |
-| `serie_consumo_cp7_2024_2025_v2.csv` | Leituras horárias de energia ativa por CP7 | E-Redes |
-| `VoronoiPTD_Areas_Servico_Rede.gpkg` | Áreas de serviço dos PTDs (Voronoi de rede) | E-Redes / OSMnx |
-| `producao_pv_cp7.gpkg` | Output do NB04 — polígonos CP7 com produção PV | Gerado pelo notebook 04 |
+Larger files (`edificios_aveiro.gpkg`, `serie_consumo_cp7_2024_2025_v2.csv`) are available in the original group repository's [release](https://github.com/gabrielaneves21404-rgb/Seminario/releases/tag/Dados_semin%C3%A1rio).
 
-> **Nota:** Devido a limitação de tamanho, os ficheiros `edificios_aveiro.gpkg` e `serie_consumo_cp7_2024_2025_v2.csv` foram adicionados ao github através do release, estando disponíveis nesta secção através do link: https://github.com/gabrielaneves21404-rgb/Seminario/releases/tag/Dados_semin%C3%A1rio
-> 
+Only publicly available E-Redes data were used. More granular data were not available to the group. Each data source keeps its own terms of use; please check them before reusing the data. OpenStreetMap data are subject to the ODbL licence.
 
----
-
-## 🚀 Reprodução Rápida
-
-### 1. Clonar o repositório
+## Reproducing the analysis
 
 ```bash
-git clone https://github.com/<utilizador>/aveiro-cer-solar.git
-cd aveiro-cer-solar
-```
+git clone https://github.com/rebeca-gomes-de-freitas/aveiro-solar-potential.git
+cd aveiro-solar-potential
 
-### 2. Criar o ambiente
-
-**Com Conda (recomendado):**
-```bash
+# with Conda (recommended)
 conda env create -f environment.yml
 conda activate aveiro-cer
-```
 
-**Com pip:**
-```bash
+# or with pip
 python -m venv venv
-source venv/bin/activate      # Linux/Mac
-venv\Scripts\activate         # Windows
+source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+
+python check_env.py             # verify dependencies and data files
+jupyter lab                     # run notebooks 04, 01, 02, 03
 ```
 
-### 3. Colocar os dados
+## Configurable parameters
 
-Copiar os ficheiros de entrada para `data/raw/` (ver tabela acima).
+Set at the top of each notebook.
 
-### 4. Correr os notebooks por ordem
+| Parameter | Default | Notebook |
+|-----------|---------|----------|
+| `ETA_PAINEL` | 0.20 | 04 |
+| `PR` | 0.80 | 04 |
+| `FATOR_OCUPACAO_RESIDENCIAL` | 0.40 | 04 |
+| `FATOR_EMPACOTAMENTO` | 0.85 | 01 |
+| `AREA_PAINEL_M2` | 2.0 m² | 01 |
+| `POTENCIA_PAINEL_KWP` | 0.450 kWp | 01, 02 |
+| `CUSTO_POR_PAINEL_EUR` | 1200 EUR/panel | 02 |
+| `TAXA_DESCONTO` | 7% | 02 |
+| `HORIZONTE_ANOS` | 25 years | 02 |
+| `ORCAMENTO` | EUR 5,000,000 | 03 |
 
-```bash
-jupyter lab
-```
+## Authors
 
-Executar pela ordem numérica: **04 → 01 → 02 → 03**
+Group project, Seminar 2025/2026, MSc in Data Science, University of Aveiro.
 
-> O notebook 04 gera os ficheiros base que os restantes consomem.
+- Rebeca Freitas
+- Carolina Raposo
+- Gabriela Silva
 
----
+All members contributed jointly to the analysis, code and dashboard.
+Original group repository: https://github.com/gabrielaneves21404-rgb/Seminario
 
-## 🔧 Parâmetros Configuráveis
+## Licence
 
-Os parâmetros principais estão no topo de cada notebook:
-
-| Parâmetro | Valor padrão | Notebook |
-|-----------|-------------|----------|
-| `ETA_PAINEL` | 0.20 (20%) | NB04 |
-| `PR` | 0.80 | NB04 |
-| `FATOR_OCUPACAO_RESIDENCIAL` | 0.40 | NB04 |
-| `FATOR_EMPACOTAMENTO` | 0.85 | NB01 |
-| `AREA_PAINEL_M2` | 2.0 m² | NB01 |
-| `POTENCIA_PAINEL_KWP` | 0.450 kWp | NB01/02 |
-| `CUSTO_POR_PAINEL_EUR` | 1200 €/painel | NB02 |
-| `TAXA_DESCONTO` | 7% | NB02 |
-| `HORIZONTE_ANOS` | 25 anos | NB02 |
-| `ORCAMENTO` | 5 000 000 € | NB03 |
-
----
-
-## 🧠 Metodologia Resumida
-
-### Notebook 04 — Produção PV e Consumo
-- **PVGIS:** Parse da série horária de irradiação global no plano inclinado H(i). Média: **1860 kWh/m²/ano**
-- **Edifícios:** Área útil = `area_fragmento × 0.40`. Produção = `H(i) × area_util × η × PR`
-- **Consumo:** Extrapolação anual robusta por CP7 (mín. 70 registos horários)
-- **Cruzamento:** Inner merge → 558 CP7s comuns. Taxa global: **52.8%**
-
-### Notebook 01 — Roteamento Espacial
-- **Spatial Join por centroide** (indivisibilidade da infraestrutura 1:1)
-- **Cobertura híbrida:** `within` + `sjoin_nearest` (fallback ≤ 1000 m)
-- **Problema de empacotamento:** `floor((area × 0.85) / 2.0 m²)`
-
-### Notebook 02 — Análise Económica
-- Distinção **autoconsumo** (0.25 €/kWh) vs **excedente RESP** (0.05 €/kWh)
-- Fluxos de caixa com degradação de 0.5%/ano durante 25 anos
-- Indicadores: VAL, TIR (bissecção numérica), Payback simples
-
-### Notebook 03 — Econometria Espacial + MILP
-- **Moran Global:** I = 0.1703, p < 0.001 → autocorrelação espacial positiva significativa
-- **LISA:** 105 CP7s significativos (32 HH, 49 LL, 18 LH, 6 HL)
-- **SAR vs SEM:** AIC SAR (6494.9) < SEM (6502.0) → SAR preferível
-- **MILP (PuLP/CBC):** 112 CP7s financiados, 4.89 M€ utilizados, cobertura 64.3%
-
----
-
-## 📊 Outputs Gerados
-
-| Ficheiro | Descrição |
-|----------|-----------|
-| `producao_pv_cp7.csv` | Produção PV estimada por CP7 |
-| `comparacao_final_limpa_cp7.csv` | Produção vs. consumo por CP7 |
-| `potencial_com_mapeamento_ptd.csv` | Edifícios mapeados para PTDs |
-| `dimensionamento_realista_paineis_ptd.csv` | Painéis instaláveis por PTD |
-| `dashboard_ptd_capacidade_real.gpkg` | GeoPackage final para QGIS/Streamlit |
-| `analise_economica_ptd.csv` | VAL, TIR, Payback por PTD |
-| `resultados_sar_cp7_88k.gpkg` | Resíduos e fitted values do SAR |
-| `milp_resultados_cp7_88k.csv` | Selecção MILP de CP7s a financiar |
-| `mapa_lisa_autossuficiencia_88k.png` | Mapa LISA dos clusters espaciais |
-| `mapa_milp_aveiro_88k.png` | Mapa da solução MILP |
-
----
-
-## 👥 Grupo 4 — SEM 2025/2026
-
-Projeto desenvolvido no âmbito do Mestrado da Universidade de Aveiro.
-
----
-
-## 📄 Licença
-
-Este repositório é disponibilizado para fins académicos. Os dados da E-Redes não podem ser redistribuídos.
+Code is released under the MIT licence (see `LICENSE`). Data remain subject to the terms of their original sources.

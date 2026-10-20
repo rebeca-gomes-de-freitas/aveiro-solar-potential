@@ -76,7 +76,7 @@ pip install -r requirements.txt
 ## ▶️ Execução
 
 ```bash
-streamlit run app5.py
+streamlit run app.py
 ```
 
 ---
